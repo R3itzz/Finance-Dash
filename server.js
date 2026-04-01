@@ -135,6 +135,34 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+// Admin Route: Delete user
+app.delete('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  
+  // Protect admin
+  if (id === 'admin') {
+    return res.status(403).json({ error: 'Operação bloqueada. Você não pode deletar o ROOT master.' });
+  }
+
+  try {
+    const users = await readUsers();
+    const userIndex = users.findIndex(u => u.id === id);
+    
+    if (userIndex === -1) {
+      return res.status(404).json({ error: 'Usuário não encontrado no banco de dados.' });
+    }
+    
+    // Remove the user from the array
+    users.splice(userIndex, 1);
+    await writeUsers(users);
+    
+    res.json({ success: true, message: 'Usuário removido com sucesso.' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
+  }
+});
+
 // Helper to read finance data
 async function readFinanceData() {
   try {
