@@ -1,0 +1,4 @@
+src/components/Dashboard.tsx(8,3): error TS6133: 'Percent' is declared but its value is never read.
+src/components/Investments.tsx(1,20): error TS6133: 'useEffect' is declared but its value is never read.
+src/components/Projections.tsx(2,10): error TS6133: 'LineChart' is declared but its value is never read.
+src/components/Projections.tsx(2,21): error TS6133: 'Line' is declared but its value is never read.

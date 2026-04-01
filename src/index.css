@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-terminal-bg: #EAE6DB; /* A soft greyish-beige for light mode (classic old terminal) */
+    --color-terminal-text: #2f343a; /* Dark text */
+    --color-terminal-primary: #cb4b16; /* Orange */
+    --color-terminal-secondary: #5f8021; /* Dark green */
+    --color-terminal-highlight: #d1ccbe; /* Border/highlight */
+  }
+
+  .dark {
+    --color-terminal-bg: #1c1c1a;
+    --color-terminal-text: #a89f91;
+    --color-terminal-primary: #c4634f;
+    --color-terminal-secondary: #76835a;
+    --color-terminal-highlight: #393933;
+  }
+
+  body {
+    @apply bg-terminal-bg text-terminal-text font-mono antialiased overflow-x-hidden;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-terminal-bg border-l border-terminal-highlight;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-terminal-highlight hover:bg-terminal-primary;
+}
+
+/* Base Inputs/Focus */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px #1c1c1a inset !important;
+    -webkit-text-fill-color: #a89f91 !important;
+}
+
+/* Enforce borders to look like ascii blocks instead of rounded modern cards */
+.rounded-xl, .rounded-lg, .rounded-md, .rounded-2xl {
+  border-radius: 0 !important;
+  border: 1px solid #393933 !important;
+}
+.shadow-sm, .shadow-md, .shadow-lg, .shadow-xl {
+  box-shadow: none !important;
+}
+
+@layer components {
+  .card {
+    @apply bg-terminal-bg border border-terminal-secondary flex flex-col p-4 text-terminal-text shadow-none rounded-none;
+  }
+
+  .btn-primary {
+    @apply bg-terminal-highlight hover:bg-terminal-secondary text-terminal-primary px-4 py-2 font-mono transition-colors duration-200 border border-terminal-primary cursor-pointer border-dashed;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent hover:bg-terminal-highlight text-terminal-text px-4 py-2 font-mono transition-colors duration-200 border border-terminal-secondary cursor-pointer;
+  }
+
+  .input {
+    @apply w-full px-4 py-2 border border-terminal-secondary bg-transparent text-terminal-primary focus:outline-none focus:ring-1 focus:ring-terminal-primary focus:border-terminal-primary font-mono rounded-none;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400;
+  }
+}

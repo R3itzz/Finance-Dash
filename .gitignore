@@ -1,0 +1,35 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node modules e pastas temporárias de build do JS
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Pastas da Gemmini ou de backup que criamos
+$backup
+.gemini
+#trash#
+
+# Arquivos sensíveis do backend (NÃO ENVIE BANCO DE DADOS PRO ARQUIVO PÚBLICO)
+.env
+users.json
+financeData.json
