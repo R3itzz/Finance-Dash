@@ -94,7 +94,7 @@ export function Opportunities() {
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-sm">
               <span 
                 className={`w-2.5 h-2.5 rounded-full ${isRealData ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse'}`}
-                title={isRealData ? "Dados em tempo real via Brapi" : "Dados simulados (Modo Offline)"}
+                title={isRealData ? "Dados reais via Alpha Vantage" : "Cache vazio - aguardando primeira busca"}
               ></span>
               <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
                 {isRealData ? 'Live' : 'Demo'}

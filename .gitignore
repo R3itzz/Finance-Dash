@@ -33,3 +33,4 @@ $backup
 .env
 users.json
 financeData.json
+marketData.json
