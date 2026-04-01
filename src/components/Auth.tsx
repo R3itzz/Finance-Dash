@@ -40,7 +40,7 @@ export function Auth({ onLogin }: AuthProps) {
     let mounted = true;
     const checkStatus = async () => {
       try {
-        await fetch('http://localhost:3001/api/users').then(() => {
+        await fetch('/api/users').then(() => {
           if (mounted) setIsOnline(true);
         });
       } catch (e) {
@@ -104,7 +104,7 @@ export function Auth({ onLogin }: AuthProps) {
     setLoading(true);
     addLine(`> Autenticando...`);
     try {
-      const res = await fetch('http://localhost:3001/api/login', {
+      const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: e, password: p })
@@ -144,7 +144,7 @@ export function Auth({ onLogin }: AuthProps) {
     setLoading(true);
     addLine(`> Registrando novo usuário...`);
     try {
-      const res = await fetch('http://localhost:3001/api/register', {
+      const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: n, email: e, password: p })

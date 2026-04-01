@@ -25,7 +25,7 @@ export function useFinanceData(userId?: string) {
     }
     
     setIsLoading(true);
-    fetch(`http://localhost:3001/api/finance/${userId}`)
+    fetch(`/api/finance/${userId}`)
       .then(res => res.json())
       .then(res => {
         if (res.success && res.data) {
@@ -45,7 +45,7 @@ export function useFinanceData(userId?: string) {
   useEffect(() => {
     if (!userId || !isInitialized) return;
 
-    fetch(`http://localhost:3001/api/finance/${userId}`, {
+    fetch(`/api/finance/${userId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ incomes, expenses, investments })
