@@ -259,6 +259,10 @@ const TRACKED_TICKERS = [
 // Helper: espera X milissegundos
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Mutex: impede buscas duplicadas simultâneas
+let isUpdating = false;
+let updatePromise = null;
+
 // Helper: lê cache do disco
 async function readMarketData() {
   try {
@@ -378,11 +382,25 @@ app.get('/api/market-data', async (req, res) => {
   try {
     const data = await readMarketData();
     
-    // Se nunca foi atualizado, faz uma primeira busca
+    // Se nunca foi atualizado, faz uma primeira busca (com trava anti-duplicação)
     if (!data.lastUpdated || data.tickers.length === 0) {
+      if (isUpdating && updatePromise) {
+        console.log('[Alpha Vantage] Busca já em andamento, aguardando...');
+        const freshData = await updatePromise;
+        return res.json({ success: true, data: freshData });
+      }
+      
       console.log('[Alpha Vantage] Cache vazio, iniciando primeira busca...');
-      const freshData = await updateAllMarketData();
-      return res.json({ success: true, data: freshData });
+      isUpdating = true;
+      updatePromise = updateAllMarketData();
+      
+      try {
+        const freshData = await updatePromise;
+        return res.json({ success: true, data: freshData });
+      } finally {
+        isUpdating = false;
+        updatePromise = null;
+      }
     }
     
     res.json({ success: true, data });
