@@ -73,7 +73,7 @@ app.post('/api/login', async (req, res) => {
     }
   } catch (error) {
     console.error('Error during login:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
@@ -109,7 +109,7 @@ app.post('/api/register', async (req, res) => {
 
   } catch (error) {
     console.error('Error during registration:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
@@ -131,7 +131,7 @@ app.get('/api/users', async (req, res) => {
     res.json({ success: true, users: cleanUsers });
   } catch (error) {
     console.error('Error fetching users:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
@@ -163,7 +163,7 @@ app.get('/api/finance/:userId', async (req, res) => {
     res.json({ success: true, data: userData });
   } catch (error) {
     console.error('Error reading finance data:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 
@@ -190,7 +190,7 @@ app.post('/api/finance/:userId', async (req, res) => {
     res.json({ success: true, message: 'Finance data synced successfully.' });
   } catch (error) {
     console.error('Error writing finance data:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: 'Internal server error: ' + error.message });
   }
 });
 

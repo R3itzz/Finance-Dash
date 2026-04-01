@@ -113,20 +113,6 @@ export function Auth({ onLogin }: AuthProps) {
       if (res.ok && data.success) {
         addLine(`> Login efetuado com sucesso. Bem-vindo(a) ${data.user.name}.`);
         setTimeout(() => onLogin(data.user), 1000);
-      } else if (data.notFound) {
-        addLine(`> Usuário não encontrado. Redirecionando para cadastro...`);
-        // Switch to register mode but keep the email
-        setTimeout(() => {
-          setMode('REGISTER');
-          setStep(0); // Start the register flow (name)
-          setHistory([]);
-          setError('');
-          setName('');
-          // Email is already in state, so user won't need to type it again when it reaches step 1, 
-          // wait, actually if step 0 is Name, they will type Name, then the next step asks for Email again 
-          // but we can pre-fill or just let them re-type. For now, the user flow will just restart cleanly in REGISTER mode.
-          inputRef.current?.focus();
-        }, 1500);
       } else {
         setError(data.error || 'Falha no login.');
         setStep(0);
