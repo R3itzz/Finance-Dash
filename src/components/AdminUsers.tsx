@@ -15,7 +15,9 @@ export function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/users');
+      const response = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${import.meta.env.VITE_API_TOKEN}` }
+      });
       const data = await response.json();
       
       if (response.ok && data.success) {
@@ -39,7 +41,10 @@ export function AdminUsers() {
     if (!window.confirm('Tem certeza que deseja apagar este usuário permanentemente?')) return;
     
     try {
-      const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/users/${userId}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${import.meta.env.VITE_API_TOKEN}` }
+      });
       const data = await res.json();
       
       if (res.ok && data.success) {

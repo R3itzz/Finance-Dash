@@ -31,6 +31,40 @@ $backup
 
 # Arquivos sensíveis do backend (NÃO ENVIE BANCO DE DADOS PRO ARQUIVO PÚBLICO)
 .env
+.env.local
+.env.*.local
 users.json
 financeData.json
 marketData.json
+
+# Modelo de variáveis de ambiente (ESTE ARQUIVO PODE SER COMMITADO)
+!.env.example
+
+# ============================================
+# SEGURANÇA ADICIONAL - ARQUIVOS SENSÍVEIS
+# ============================================
+
+# Credentials e secrets
+credentials.json
+*.key
+*.pem
+*.crt
+serviceAccountKey.json
+
+# Arquivos de banco de dados local
+*.sqlite
+*.db
+*.sqlite3
+
+# Logs de servidor em produção
+/server-logs
+/access.log
+error.log
+
+# Arquivos temporários do sistema
+*.tmp
+*.temp
+Thumbs.db
+~$*
+
+#医保续#医保续

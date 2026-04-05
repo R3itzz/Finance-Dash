@@ -25,7 +25,9 @@ export function useFinanceData(userId?: string) {
     }
     
     setIsLoading(true);
-    fetch(`/api/finance/${userId}`)
+    fetch(`/api/finance/${userId}`, {
+      headers: { 'Authorization': `Bearer ${import.meta.env.VITE_API_TOKEN}` }
+    })
       .then(res => res.json())
       .then(res => {
         if (res.success && res.data) {
@@ -47,7 +49,10 @@ export function useFinanceData(userId?: string) {
 
     fetch(`/api/finance/${userId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_API_TOKEN}`
+      },
       body: JSON.stringify({ incomes, expenses, investments })
     }).catch(err => console.error("Error saving finance data:", err));
   }, [incomes, expenses, investments, userId, isInitialized]);
