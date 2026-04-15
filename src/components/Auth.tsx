@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { User as UserIcon, Mail, Lock, Sun, Moon } from 'lucide-react';
 
 export interface User {
   id: string;
@@ -9,145 +10,68 @@ export interface User {
 
 interface AuthProps {
   onLogin: (user: User) => void;
+  initialDarkMode?: boolean;
+  onDarkModeChange?: (dark: boolean) => void;
 }
 
-export function Auth({ onLogin }: AuthProps) {
+export function Auth({ onLogin, initialDarkMode, onDarkModeChange }: AuthProps) {
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
-  const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState<string[]>([]);
-  const [isOnline, setIsOnline] = useState(true);
+  const [isDark, setIsDark] = useState(() => initialDarkMode ?? localStorage.getItem('darkMode') === 'true');
 
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    // Focus input on mount and step change
-    inputRef.current?.focus();
-  }, [step, mode]);
-
-  useEffect(() => {
-    const handleGlobalClick = () => {
-      inputRef.current?.focus();
-    };
-    document.addEventListener('click', handleGlobalClick);
-    return () => document.removeEventListener('click', handleGlobalClick);
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const checkStatus = async () => {
-      try {
-        await fetch('/api/users').then(() => {
-          if (mounted) setIsOnline(true);
-        });
-      } catch (e) {
-        if (mounted) setIsOnline(false);
-      }
-    };
-    
-    checkStatus();
-    const interval = setInterval(checkStatus, 5000);
-    
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  const addLine = (line: string) => {
-    setHistory(prev => [...prev, line]);
-  };
-
-  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const val = e.currentTarget.value.trim();
-      e.currentTarget.value = '';
-
-      if (error) setError('');
-
-      if (mode === 'LOGIN') {
-        if (step === 0) {
-          addLine(`> Digite seu email: ${val}`);
-          if (!val) { setError('Email obrigatório.'); return; }
-          setEmail(val);
-          setStep(1);
-        } else if (step === 1) {
-          // don't echo password
-          addLine(`> Digite sua senha: ********`);
-          if (!val) { setError('Senha obrigatória.'); return; }
-          await attemptLogin(email, val);
-        }
-      } else {
-        if (step === 0) {
-          addLine(`> Digite seu nome: ${val}`);
-          if (!val) { setError('Nome obrigatório.'); return; }
-          setName(val);
-          setStep(1);
-        } else if (step === 1) {
-          addLine(`> Digite seu email: ${val}`);
-          if (!val) { setError('Email obrigatório.'); return; }
-          setEmail(val);
-          setStep(2);
-        } else if (step === 2) {
-          addLine(`> Digite sua senha: ********`);
-          if (!val) { setError('Senha obrigatória.'); return; }
-          await attemptRegister(name, email, val);
-        }
-      }
+  const attemptLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError('Preencha todos os campos.');
+      return;
     }
-  };
-
-  const attemptLogin = async (e: string, p: string) => {
     setLoading(true);
-    addLine(`> Autenticando...`);
+    setError('');
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: e, password: p })
+        body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        addLine(`> Login efetuado com sucesso. Bem-vindo(a) ${data.user.name}.`);
-        setTimeout(() => onLogin(data.user), 1000);
+        onLogin(data.user);
       } else {
         setError(data.error || 'Falha no login.');
-        setStep(0);
-        setEmail('');
       }
     } catch (err) {
-      setError('Conexão recusada. O servidor está rodando?');
-      setStep(0);
+      setError('Conexão recusada. Servidor offline?');
     } finally {
       setLoading(false);
     }
   };
 
-  const attemptRegister = async (n: string, e: string, p: string) => {
+  const attemptRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email || !password) {
+      setError('Preencha todos os campos.');
+      return;
+    }
     setLoading(true);
-    addLine(`> Registrando novo usuário...`);
+    setError('');
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: n, email: e, password: p })
+        body: JSON.stringify({ name, email, password })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        addLine(`> Registro concluído. Efetuando login...`);
-        setTimeout(() => onLogin(data.user), 1000);
+        onLogin(data.user);
       } else {
         setError(data.error || 'Falha no registro.');
-        setStep(0);
-        setName('');
-        setEmail('');
       }
     } catch (err) {
-      setError('Conexão recusada. O servidor está rodando?');
-      setStep(0);
+      setError('Conexão recusada. Servidor offline?');
     } finally {
       setLoading(false);
     }
@@ -155,94 +79,137 @@ export function Auth({ onLogin }: AuthProps) {
 
   const toggleMode = () => {
     setMode(prev => prev === 'LOGIN' ? 'REGISTER' : 'LOGIN');
-    setStep(0);
-    setHistory([]);
     setError('');
     setName('');
-    inputRef.current?.focus();
+    setEmail('');
+    setPassword('');
   };
 
-  const FinanceASCII = `███████╗██╗███╗   ██╗ █████╗ ███╗   ██╗ ██████╗███████╗
-██╔════╝██║████╗  ██║██╔══██╗████╗  ██║██╔════╝██╔════╝
-█████╗  ██║██╔██╗ ██║███████║██╔██╗ ██║██║     █████╗  
-██╔══╝  ██║██║╚██╗██║██╔══██║██║╚██╗██║██║     ██╔══╝  
-██║     ██║██║ ╚████║██║  ██║██║ ╚████║╚██████╗███████╗
-╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝╚══════╝`;
-
-  const DashboardASCII = `██████╗  █████╗ ███████╗██╗  ██╗██████╗  ██████╗  █████╗ ██████╗ ██████╗ 
-██╔══██╗██╔══██╗██╔════╝██║  ██║██╔══██╗██╔═══██╗██╔══██╗██╔══██╗██╔══██╗
-██║  ██║███████║███████╗███████║██████╔╝██║   ██║███████║██████╔╝██║  ██║
-██║  ██║██╔══██║╚════██║██╔══██║██╔══██╗██║   ██║██╔══██║██╔══██╗██║  ██║
-██████╔╝██║  ██║███████║██║  ██║██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝
-╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝`;
-
   return (
-    <div className="min-h-screen bg-terminal-bg text-terminal-text font-mono p-4 sm:p-8 selection:bg-terminal-primary selection:text-terminal-bg flex flex-col cursor-text">
-      <div className="max-w-5xl mx-auto w-full">
-        <div className="overflow-x-auto no-scrollbar mb-8 w-full max-w-[100vw] -mx-4 px-4 sm:mx-0 sm:px-0 flex flex-wrap gap-x-8 gap-y-4">
-          <pre className="text-terminal-primary font-bold text-[8px] sm:text-[10px] md:text-xs leading-none whitespace-pre py-2">
-            {FinanceASCII}
-          </pre>
-          <pre className="text-terminal-primary font-bold text-[8px] sm:text-[10px] md:text-xs leading-none whitespace-pre py-2">
-            {DashboardASCII}
-          </pre>
-        </div>
-        <div className="mb-6 opacity-80 text-sm sm:text-base">
-          Bem-vindo(a) ao sistema <span className="text-terminal-primary">FINANCE DASHBOARD</span>.
-          <p className="mt-1 opacity-70">
-            {mode === 'LOGIN' ? '-> Insira os dados de login.' : '-> Insira os dados para registro.'}
-          </p>
-        </div>
+    <div className={`min-h-screen relative flex items-center justify-center font-sans bg-cover bg-center transition-all duration-700 ${isDark
+      ? 'bg-[url("/dark_gradient.jpg")]'
+      : 'bg-[url("/white_gradient.jpg")]'
+      }`}>
 
-        <div className="mb-8 space-y-2 text-sm sm:text-base break-all">
-          {history.map((line, i) => (
-            <div key={i} className="opacity-90">{line}</div>
-          ))}
-          {error && <div className="text-red-500 mt-2">! Erro: {error}</div>}
-        </div>
+      {/* Header */}
+      <header className="absolute top-0 left-0 w-full px-5 pt-0 flex items-center">
+        <img src={isDark ? "/logo_white.png" : "/logo.png"} alt="Logo" className="h-[50px] w-auto drop-shadow-lg -mt-[-5px] -ml-[5px]" />
+      </header>
 
-        {!loading && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center text-base sm:text-lg mt-4 w-full gap-2 sm:gap-0">
-            <div className="flex items-center">
-              <span className="text-terminal-primary font-bold mr-2">{'>'}</span>
-              <span className="mr-2 opacity-90 whitespace-nowrap">
-                {mode === 'LOGIN'
-                  ? (step === 0 ? 'Digite seu email:' : 'Digite sua senha:')
-                  : (step === 0 ? 'Digite seu nome:' : step === 1 ? 'Digite seu email:' : 'Digite sua senha:')
-                }
-              </span>
+      {/* Dark/Light Mode Toggle */}
+      <button
+        type="button"
+        onClick={() => {
+          const newValue = !isDark;
+          setIsDark(newValue);
+          localStorage.setItem('darkMode', String(newValue));
+          onDarkModeChange?.(newValue);
+        }}
+        className={`absolute bottom-8 left-8 p-3 rounded-full backdrop-blur-md shadow-lg transition-all duration-500 hover:scale-110 ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'
+          }`}
+      >
+        {isDark ? (
+          <Sun className="w-6 h-6 text-yellow-300 drop-shadow-md transition-transform duration-500 rotate-0" />
+        ) : (
+          <Moon className="w-6 h-6 text-[#1a2542] drop-shadow-md transition-transform duration-500 rotate-360" />
+        )}
+      </button>
+
+      {/* Footer Status */}
+      <div className={`absolute bottom-6 right-6 flex items-center text-xs tracking-wider transition-colors duration-500 cursor-default select-none ${isDark ? 'text-zinc-400' : 'text-[#64748b]'}`}>
+        <div className={`w-2 h-2 rounded-full mr-2 animate-pulse ${isDark ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'bg-green-500'}`}></div>
+        <span className="mr-3">TERMINAL_ONLINE</span>
+        <span className="opacity-50 mr-3">|</span>
+        <span>BY: NICOLAS REITZ</span>
+      </div>
+
+      <div className={`w-full max-w-[310px] p-6 flex flex-col items-center rounded-[28px] backdrop-blur-lg shadow-2xl transition-all duration-500 ${isDark ? 'bg-zinc-900/80 text-white' : 'bg-white/90 text-[#2d3748]'
+        }`}>
+
+        <h1 className="text-2xl font-bold mb-6 tracking-wide">
+          {mode === 'LOGIN' ? 'Login' : 'Sign Up'}
+        </h1>
+
+        <form className="w-full" onSubmit={mode === 'LOGIN' ? attemptLogin : attemptRegister}>
+
+          {mode === 'REGISTER' && (
+            <div className={`flex items-center px-4 py-3 rounded-none mb-4 transition-colors duration-500 ${isDark ? 'bg-zinc-800' : 'bg-[#f1f5f9]'
+              }`}>
+              <UserIcon className={`w-5 h-5 mr-3 ${isDark ? 'text-zinc-400' : 'text-[#64748b]'}`} />
+              <input
+                type="text"
+                placeholder="Username"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                disabled={loading}
+                className={`bg-transparent border-none outline-none w-full font-medium placeholder:font-normal ${isDark ? 'text-white placeholder-zinc-500' : 'text-[#334155] placeholder-[#94a3b8]'
+                  }`}
+              />
             </div>
+          )}
+
+          <div className={`flex items-center px-4 py-3 rounded-none mb-4 transition-colors duration-500 ${isDark ? 'bg-zinc-800' : 'bg-[#f1f5f9]'
+            }`}>
+            <Mail className={`w-5 h-5 mr-3 ${isDark ? 'text-zinc-400' : 'text-[#64748b]'}`} />
             <input
-              ref={inputRef}
-              type={
-                mode === 'LOGIN' ? (step === 1 ? 'password' : 'text')
-                  : (step === 2 ? 'password' : 'text')
-              }
-              className="bg-transparent outline-none border-none flex-1 w-full text-terminal-text pl-4 sm:pl-0"
-              onKeyDown={handleKeyDown}
+              type="email"
+              placeholder="Email ID"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               disabled={loading}
-              autoComplete="off"
+              className={`bg-transparent border-none outline-none w-full font-medium placeholder:font-normal ${isDark ? 'text-white placeholder-zinc-500' : 'text-[#334155] placeholder-[#94a3b8]'
+                }`}
             />
           </div>
-        )}
 
-        <div className="fixed bottom-4 left-4 right-4 sm:left-8 sm:right-8 text-[10px] sm:text-xs flex flex-col sm:flex-row justify-between items-center sm:items-end gap-2 bg-terminal-bg/80 p-2 sm:p-0 backdrop-blur-sm z-10 w-[calc(100%-32px)] sm:w-[calc(100%-64px)]">
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleMode(); }}
-            className="text-sm sm:text-base font-bold opacity-100 hover:text-terminal-primary hover:bg-terminal-primary/10 transition-colors p-2 -ml-2 rounded text-left mb-2 sm:mb-0"
-          >
-            [Mudar para {mode === 'LOGIN' ? 'REGISTRO' : 'LOGIN'}]
-          </button>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 items-center opacity-80">
-            <div className="flex items-center gap-2">
-              <span>Status do terminal:</span>
-              <span className={isOnline ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
-                {isOnline ? 'Online' : 'Offline'}
-              </span>
-              <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse'}`}></span>
-            </div>
-            <span className="text-terminal-primary">By: Nicolas Reitz</span>
+          <div className={`flex items-center px-4 py-3 rounded-none mb-6 transition-colors duration-500 ${isDark ? 'bg-zinc-800' : 'bg-[#f1f5f9]'
+            }`}>
+            <Lock className={`w-5 h-5 mr-3 ${isDark ? 'text-zinc-400' : 'text-[#64748b]'}`} />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              disabled={loading}
+              className={`bg-transparent border-none outline-none w-full font-medium placeholder:font-normal ${isDark ? 'text-white placeholder-zinc-500' : 'text-[#334155] placeholder-[#94a3b8]'
+                }`}
+            />
           </div>
+
+          {error && <div className="text-red-400 text-sm mb-4 text-center font-medium bg-red-500/10 py-2 rounded-none">{error}</div>}
+
+          {mode === 'LOGIN' && (
+            <div className={`flex justify-between items-center text-sm mb-6 font-medium ${isDark ? 'text-zinc-300' : 'text-[#64748b]'
+              }`}>
+              <label className="flex items-center cursor-pointer">
+                <input type="checkbox" className={`mr-2 ${isDark ? 'accent-zinc-500' : 'accent-[#4f86f7]'}`} />
+                Remember me
+              </label>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-3 rounded-none font-bold tracking-wider transition-all duration-300 disabled:opacity-50 shadow-lg text-white ${isDark ? 'bg-zinc-700 hover:bg-zinc-600 shadow-zinc-900/50' : 'bg-[#4f86f7] hover:bg-[#3b6ecc] shadow-blue-500/30'
+              }`}
+          >
+            {loading ? 'WAIT...' : (mode === 'LOGIN' ? 'LOGIN' : 'REGISTER')}
+          </button>
+
+          {mode === 'LOGIN' && (
+            <div className="mt-4 text-center">
+              <a href="#" className={`text-sm hover:underline transition-colors ${isDark ? 'text-zinc-400 hover:text-white' : 'text-[#64748b] hover:text-[#1a2542]'}`}>Forgot your password?</a>
+            </div>
+          )}
+        </form>
+
+        <div className={`mt-8 text-sm transition-colors ${isDark ? 'text-zinc-300' : 'text-[#64748b]'}`}>
+          {mode === 'LOGIN' ? (
+            <p>New to site? <button onClick={toggleMode} className={`font-bold hover:underline ml-1 ${isDark ? 'text-white' : 'text-[#4f86f7]'}`}>Sign Up</button></p>
+          ) : (
+            <p>Already have an account? <button onClick={toggleMode} className={`font-bold hover:underline ml-1 ${isDark ? 'text-white' : 'text-[#4f86f7]'}`}>Login</button></p>
+          )}
         </div>
       </div>
     </div>

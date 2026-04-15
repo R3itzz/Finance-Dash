@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ArrowUpRight, ArrowDownRight, DollarSign, Home, Utensils, Car, Heart, School, Film, ShoppingCart, Wifi, MoreHorizontal, Briefcase, TrendingUp, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Income, Expense } from '../types';
@@ -12,6 +12,7 @@ interface DataInputProps {
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   onRemoveIncome: (id: string) => void;
   onRemoveExpense: (id: string) => void;
+  darkMode?: boolean;
 }
 
 const incomeCategories = [
@@ -30,8 +31,16 @@ const expenseCategories = [
   { value: 'entertainment', label: 'Lazer' },
   { value: 'shopping', label: 'Compras' },
   { value: 'utilities', label: 'Contas' },
+  { value: 'subscriptions', label: 'Assinaturas' },
   { value: 'other', label: 'Outros' },
 ];
+
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  housing: Home, food: Utensils, transport: Car, health: Heart,
+  education: School, entertainment: Film, shopping: ShoppingCart,
+  utilities: Wifi, subscriptions: Zap, other: MoreHorizontal,
+  salary: Briefcase, freelance: DollarSign, investment_return: TrendingUp,
+};
 
 export function DataInput({
   incomes,
@@ -40,41 +49,51 @@ export function DataInput({
   onAddExpense,
   onRemoveIncome,
   onRemoveExpense,
+  darkMode = false,
 }: DataInputProps) {
   const [activeTab, setActiveTab] = useState<'income' | 'expense'>('income');
   const [showForm, setShowForm] = useState(false);
-
-  // Form states
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [expenseType, setExpenseType] = useState<'fixed' | 'variable'>('variable');
   const [recurring, setRecurring] = useState(false);
 
+  // Design tokens matching Dashboard
+  const textPrimary = darkMode ? '#fff' : '#1c1917';
+  const textSecondary = darkMode ? '#a1a1a1' : '#57534e';
+  const textMuted = darkMode ? '#525252' : '#a8a29e';
+  const bgCard = darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.7)';
+  const bgInput = darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
+  const borderColor = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const accentColor = darkMode ? '#c6f135' : '#65a30d';
+  const tabColor = activeTab === 'income' ? accentColor : '#ef4444';
+  const tabTextColor = activeTab === 'income' ? '#000' : '#fff';
+  const cardStyle = { backgroundColor: bgCard, backdropFilter: 'blur(20px)', border: `1px solid ${borderColor}` };
+  const inputStyle = {
+    backgroundColor: bgInput,
+    border: `1px solid ${borderColor}`,
+    color: textPrimary,
+    borderRadius: '10px',
+    padding: '10px 14px',
+    width: '100%',
+    fontSize: '14px',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     const baseData = {
       description,
       amount: parseFloat(amount),
       date: format(new Date(), 'yyyy-MM-dd'),
     };
-
     if (activeTab === 'income') {
-      onAddIncome({
-        ...baseData,
-        category: category as Income['category'],
-        recurring,
-      });
+      onAddIncome({ ...baseData, category: category as Income['category'], recurring });
     } else {
-      onAddExpense({
-        ...baseData,
-        category: category as Expense['category'],
-        type: expenseType,
-      });
+      onAddExpense({ ...baseData, category: category as Expense['category'], type: expenseType });
     }
-
-    // Reset form
     setDescription('');
     setAmount('');
     setCategory('');
@@ -89,209 +108,211 @@ export function DataInput({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Lançamentos</h2>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-1">
-          Registre suas receitas e despesas
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-heading font-semibold" style={{ color: textPrimary }}>Lançamentos</h2>
+          <p className="text-sm mt-1" style={{ color: textSecondary }}>Registre suas receitas e despesas</p>
+        </div>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:opacity-90"
+            style={{ backgroundColor: activeTab === 'expense' ? '#ef4444' : accentColor, color: activeTab === 'expense' ? '#fff' : '#000' }}
+          >
+            <Plus className="w-4 h-4" />
+            Nova {activeTab === 'income' ? 'Receita' : 'Despesa'}
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border border-terminal-secondary p-1 w-fit bg-terminal-highlight bg-opacity-30">
+      <div className="flex rounded-xl p-1 w-fit" style={{ backgroundColor: darkMode ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)' }}>
         <button
           onClick={() => setActiveTab('income')}
-          className={`px-6 py-2 font-mono transition-all border border-transparent ${
-            activeTab === 'income'
-              ? 'bg-terminal-bg text-terminal-primary border-terminal-secondary'
-              : 'text-terminal-text hover:text-terminal-primary'
-          }`}
+          className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+          style={{
+            backgroundColor: activeTab === 'income' ? accentColor : 'transparent',
+            color: activeTab === 'income' ? '#000' : textSecondary,
+          }}
         >
+          <ArrowUpRight className="w-4 h-4" />
           Receitas
         </button>
         <button
           onClick={() => setActiveTab('expense')}
-          className={`px-6 py-2 font-mono transition-all border border-transparent ${
-            activeTab === 'expense'
-              ? 'bg-terminal-bg text-terminal-primary border-terminal-secondary'
-              : 'text-terminal-text hover:text-terminal-primary'
-          }`}
+          className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+          style={{
+            backgroundColor: activeTab === 'expense' ? '#ef4444' : 'transparent',
+            color: activeTab === 'expense' ? '#fff' : textSecondary,
+          }}
         >
+          <ArrowDownRight className="w-4 h-4" />
           Despesas
         </button>
       </div>
 
-      {/* Add Button */}
-      {!showForm && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Novo {activeTab === 'income' ? 'Receita' : 'Despesa'}
-        </button>
-      )}
-
       {/* Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Descrição
-              </label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex: Salário, Aluguel, Supermercado"
-                className="input"
-                required
-              />
+        <div className="glass-card rounded-2xl p-6" style={cardStyle}>
+          <h3 className="font-medium mb-4 text-sm" style={{ color: textPrimary }}>
+            Nova {activeTab === 'income' ? 'Receita' : 'Despesa'}
+          </h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs mb-1.5 font-medium" style={{ color: textSecondary }}>Descrição</label>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Ex: Salário, Aluguel, Supermercado"
+                  style={inputStyle}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs mb-1.5 font-medium" style={{ color: textSecondary }}>Valor (R$)</label>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0,00"
+                  step="0.01"
+                  min="0"
+                  style={inputStyle}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs mb-1.5 font-medium" style={{ color: textSecondary }}>Categoria</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                  required
+                >
+                  <option value="" style={{ backgroundColor: darkMode ? '#1c1c1c' : '#fff' }}>Selecione...</option>
+                  {(activeTab === 'income' ? incomeCategories : expenseCategories).map((cat) => (
+                    <option key={cat.value} value={cat.value} style={{ backgroundColor: darkMode ? '#1c1c1c' : '#fff' }}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Valor (R$)
-              </label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0,00"
-                step="0.01"
-                min="0"
-                className="input"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Categoria
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="input"
-                required
-              >
-                <option value="">Selecione...</option>
-                {(activeTab === 'income' ? incomeCategories : expenseCategories).map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
+            {activeTab === 'expense' && (
+              <div className="flex gap-4">
+                {['fixed', 'variable'].map((type) => (
+                  <label key={type} className="flex items-center gap-2 cursor-pointer">
+                    <div
+                      onClick={() => setExpenseType(type as 'fixed' | 'variable')}
+                      className="w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all"
+                      style={{
+                        borderColor: expenseType === type ? tabColor : borderColor,
+                        backgroundColor: expenseType === type ? tabColor : 'transparent',
+                      }}
+                    >
+                      {expenseType === type && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <span className="text-sm" style={{ color: textSecondary }}>{type === 'fixed' ? 'Fixa' : 'Variável'}</span>
+                  </label>
                 ))}
-              </select>
-            </div>
-          </div>
+              </div>
+            )}
 
-          {activeTab === 'expense' && (
-            <div className="flex gap-4">
+            {activeTab === 'income' && (
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="expenseType"
-                  value="fixed"
-                  checked={expenseType === 'fixed'}
-                  onChange={() => setExpenseType('fixed')}
-                  className="w-4 h-4 text-primary-600"
-                />
-                <span className="text-sm text-neutral-700 dark:text-neutral-300">Fixa</span>
+                <div
+                  onClick={() => setRecurring(!recurring)}
+                  className="w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer transition-all"
+                  style={{
+                    borderColor: recurring ? tabColor : borderColor,
+                    backgroundColor: recurring ? tabColor : 'transparent',
+                  }}
+                >
+                  {recurring && <div className="w-2 h-2 rounded-sm bg-black" />}
+                </div>
+                <span className="text-sm" style={{ color: textSecondary }}>Receita recorrente</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="expenseType"
-                  value="variable"
-                  checked={expenseType === 'variable'}
-                  onChange={() => setExpenseType('variable')}
-                  className="w-4 h-4 text-primary-600"
-                />
-                <span className="text-sm text-neutral-700 dark:text-neutral-300">Variável</span>
-              </label>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                style={{ backgroundColor: tabColor, color: tabTextColor }}
+              >
+                Salvar
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                style={{ backgroundColor: bgInput, color: textSecondary, border: `1px solid ${borderColor}` }}
+              >
+                Cancelar
+              </button>
             </div>
-          )}
-
-          {activeTab === 'income' && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={recurring}
-                onChange={(e) => setRecurring(e.target.checked)}
-                className="w-4 h-4 text-primary-600 rounded"
-              />
-              <span className="text-sm text-neutral-700 dark:text-neutral-300">Receita recorrente</span>
-            </label>
-          )}
-
-          <div className="flex gap-2">
-            <button type="submit" className="btn-primary">
-              Salvar
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="btn-secondary"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
 
-      {/* Transactions List */}
-      <div className="card">
-        <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
-          <h3 className="font-semibold text-neutral-900 dark:text-white">
-            Histórico
-          </h3>
+      {/* Transaction List */}
+      <div className="glass-card rounded-2xl overflow-hidden" style={cardStyle}>
+        <div className="px-6 py-4" style={{ borderBottom: `1px solid ${borderColor}` }}>
+          <h3 className="font-medium text-sm" style={{ color: textPrimary }}>Histórico</h3>
         </div>
-        <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
+        <div>
           {allTransactions.length === 0 ? (
-            <div className="p-8 text-center text-neutral-500">
+            <div className="py-12 text-center text-sm" style={{ color: textMuted }}>
               Nenhum lançamento registrado
             </div>
           ) : (
-            allTransactions.slice(0, 20).map((transaction) => (
-              <div
-                key={transaction.id}
-                className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-700/30"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-neutral-900 dark:text-white">
-                    {transaction.description}
-                  </p>
-                  <p className="text-sm text-neutral-500">
-                    {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })} • {' '}
-                    {transaction.category}
-                  </p>
+            allTransactions.slice(0, 20).map((transaction, i) => {
+              const Icon = CATEGORY_ICONS[transaction.category] || DollarSign;
+              const isIncome = transaction.type === 'income';
+              const dateStr = format(new Date(transaction.date), 'dd MMM', { locale: ptBR });
+              const catLabel = isIncome
+                ? incomeCategories.find(c => c.value === transaction.category)?.label
+                : expenseCategories.find(c => c.value === transaction.category)?.label;
+              return (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between px-6 py-3.5 transition-all"
+                  style={{
+                    borderBottom: i < allTransactions.length - 1 ? `1px solid ${borderColor}` : 'none',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: isIncome ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)' }}>
+                      <Icon className="w-4 h-4" style={{ color: isIncome ? '#22c55e' : '#ef4444' }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: textPrimary }}>{transaction.description}</p>
+                      <p className="text-xs mt-0.5" style={{ color: textMuted }}>{dateStr} · {catLabel || transaction.category}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-mono font-semibold" style={{ color: isIncome ? '#22c55e' : '#ef4444' }}>
+                      {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </span>
+                    <button
+                      onClick={() => isIncome ? onRemoveIncome(transaction.id) : onRemoveExpense(transaction.id)}
+                      className="p-1.5 rounded-lg transition-all"
+                      style={{ color: textMuted }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                      onMouseLeave={e => (e.currentTarget.style.color = textMuted)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-4">
-                  <span
-                    className={`font-semibold ${
-                      transaction.type === 'income'
-                        ? 'text-primary-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {transaction.type === 'income' ? '+' : '-'}
-                    {formatCurrency(transaction.amount)}
-                  </span>
-
-                  <button
-                    onClick={() =>
-                      transaction.type === 'income'
-                        ? onRemoveIncome(transaction.id)
-                        : onRemoveExpense(transaction.id)
-                    }
-                    className="p-2 text-neutral-400 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

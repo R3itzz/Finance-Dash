@@ -119,3 +119,22 @@ export interface UserSettings {
   riskProfile: 'conservative' | 'moderate' | 'aggressive';
   currency: 'BRL' | 'USD';
 }
+
+// Assinaturas
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  dueDay: number;
+  active: boolean;
+}
+
+// Metas
+export interface Goal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: string;
+  completed: boolean;
+}

@@ -6,22 +6,50 @@ import { Projections } from './components/Projections';
 import { Opportunities } from './components/Opportunities';
 import { DataInput } from './components/DataInput';
 import { useFinanceData } from './hooks/useFinanceData';
+import { useUserSettings } from './hooks/useUserSettings';
+import { useSubscriptions } from './hooks/useSubscriptions';
+import { useGoals } from './hooks/useGoals';
 import { Auth, User } from './components/Auth';
 import { AdminUsers } from './components/AdminUsers';
+import { Settings } from './components/Settings';
 
-export type View = 'dashboard' | 'investments' | 'projections' | 'opportunities' | 'input' | 'users';
+export type View = 'dashboard' | 'investments' | 'projections' | 'opportunities' | 'input' | 'users' | 'settings';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [user, setUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
   const [greeting, setGreeting] = useState('');
+  const [settingTab, setSettingTab] = useState<string>('assinaturas');
+
+  const handleNavigateToSetting = (tab: string) => {
+    setSettingTab(tab);
+    setCurrentView('settings');
+  };
 
   const financeData = useFinanceData(user?.id);
+  const userSettings = useUserSettings(user?.id);
+  const subscriptions = useSubscriptions(user?.id);
+  const userGoals = useGoals(user?.id);
+  
+  const localDarkMode = typeof window !== 'undefined' ? localStorage.getItem('darkMode') === 'true' : false;
+  const darkMode = userSettings.settings.darkMode ?? localDarkMode;
+  const metaMensal = userSettings.settings.metaMensal;
+  
+  const setDarkMode = (value: boolean) => {
+    localStorage.setItem('darkMode', String(value));
+    userSettings.saveSettings({ darkMode: value });
+  };
 
   useEffect(() => {
-    // Determine greeting based on current time
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  useEffect(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) {
       setGreeting('Bom dia');
@@ -30,42 +58,43 @@ function App() {
     } else {
       setGreeting('Boa noite');
     }
-
-    // Set initial dark mode
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
+  }, []);
 
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
+    const newValue = !darkMode;
+    localStorage.setItem('darkMode', String(newValue));
+    setDarkMode(newValue);
+  };
+
+  const handleMetaMensalChange = (value: number) => {
+    userSettings.updateMetaMensal(value);
   };
 
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard data={financeData} />;
+        return <Dashboard data={financeData} darkMode={darkMode} metaMensal={metaMensal} subscriptions={subscriptions.subscriptions} goals={userGoals.goals} investments={financeData.investments} onNavigateToSetting={handleNavigateToSetting} onNavigate={setCurrentView} />;
       case 'investments':
         return <Investments
           investments={financeData.investments}
           onAdd={financeData.addInvestment}
           onRemove={financeData.removeInvestment}
           onUpdate={financeData.updateInvestment}
+          darkMode={darkMode}
         />;
       case 'users':
         if (user?.role === 'admin') {
           return <AdminUsers />;
         }
-        return <Dashboard data={financeData} />;
+        return <Dashboard data={financeData} darkMode={darkMode} onNavigateToSetting={handleNavigateToSetting} />;
       case 'projections':
         return <Projections
           totalInvested={financeData.summary.totalInvested}
           monthlyContribution={financeData.summary.balance > 0 ? financeData.summary.balance * 0.7 : 500}
+          darkMode={darkMode}
         />;
       case 'opportunities':
-        return <Opportunities />;
+        return <Opportunities darkMode={darkMode} />;
       case 'input':
         return (
           <DataInput
@@ -75,28 +104,60 @@ function App() {
             onAddExpense={financeData.addExpense}
             onRemoveIncome={financeData.removeIncome}
             onRemoveExpense={financeData.removeExpense}
+            darkMode={darkMode}
+          />
+        );
+      case 'settings':
+        return (
+          <Settings 
+            darkMode={darkMode} 
+            activeTab={settingTab} 
+            onTabChange={setSettingTab} 
+            metaMensal={metaMensal} 
+            onMetaMensalChange={handleMetaMensalChange} 
+            isSaving={userSettings.isSaving} 
+            isAdmin={user?.role === 'admin'}
+            subscriptions={subscriptions.subscriptions}
+            onAddSubscription={subscriptions.addSubscription}
+            onRemoveSubscription={subscriptions.removeSubscription}
+            goals={userGoals.goals}
+            onAddGoal={userGoals.addGoal}
+            onRemoveGoal={userGoals.removeGoal}
           />
         );
       default:
-        return <Dashboard data={financeData} />;
+        return <Dashboard data={financeData} darkMode={darkMode} onNavigateToSetting={handleNavigateToSetting} />;
     }
   };
 
   if (!user) {
-    return <Auth onLogin={setUser} />;
+    return <Auth onLogin={setUser} initialDarkMode={darkMode} onDarkModeChange={setDarkMode} />;
   }
 
-  if (financeData.isLoading) {
+  if (userSettings.isLoading) {
     return (
-      <div className="min-h-screen bg-terminal-bg text-terminal-primary flex items-center justify-center font-mono p-4 text-center flex-col gap-4 text-sm sm:text-base">
-        <div className="animate-pulse">_ carregando matriz financeira do servidor...</div>
-        <div className="opacity-50 text-xs">Aguarde sincronização com database.json</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-pulse text-gray-500">Carregando configurações...</div>
       </div>
     );
   }
 
+  if (financeData.isLoading) {
+    const loadingBg = darkMode ? 'url(/dark_gradient.jpg)' : 'url(/white_gradient.jpg)';
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 text-center flex-col gap-4 bg-cover bg-center" style={{ backgroundImage: loadingBg }}>
+        <div className="animate-pulse text-accent">Carregando dados...</div>
+      </div>
+    );
+  }
+
+  const today = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const bgImage = darkMode ? 'url(/dark_gradient.jpg)' : 'url(/white_gradient.jpg)';
+  const textColor = darkMode ? '#a1a1a1' : '#57534e';
+
   return (
-    <div className="min-h-screen bg-terminal-bg text-terminal-text transition-colors duration-300 font-mono">
+    <div className="min-h-screen bg-cover bg-center transition-all duration-700" style={{ backgroundImage: bgImage, color: textColor }}>
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           user={user}
@@ -109,13 +170,32 @@ function App() {
           onLogout={() => setUser(null)}
         />
         
-        <main className={`flex-1 transition-all duration-300 overflow-y-auto ${sidebarOpen ? 'ml-64' : 'ml-16'} p-8`}>
+        <main className={`flex-1 transition-all duration-700 overflow-y-auto ${sidebarOpen ? 'ml-64' : 'ml-20'} p-6`}>
           {currentView === 'dashboard' && (
-            <div className="mb-8 border-b border-terminal-secondary pb-4">
-              <h1 className="text-xl text-terminal-primary">
-                {greeting}, {user.name}
-              </h1>
-              <p className="text-sm opacity-70">Logado no FINANCE_DASHBOARD Terminal. Status: Online.</p>
+            <div className="mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-heading font-semibold" style={{ color: darkMode ? '#fff' : '#1c1917' }}>
+                    {greeting}, {user.name}
+                  </h1>
+                  <p className="text-sm opacity-70 mt-1">{today}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs opacity-70">Patrimônio Total</p>
+                    <p className="text-xl font-mono font-bold" style={{ color: darkMode ? '#fff' : '#1c1917' }}>
+                      {(() => {
+                        const investmentsValue = financeData.investments.reduce((sum, i) => sum + (i.quantity * i.currentPrice), 0);
+                        const total = financeData.summary.balance + investmentsValue;
+                        return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                      })()}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-black font-medium">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           

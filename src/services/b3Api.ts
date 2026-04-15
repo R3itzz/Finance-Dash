@@ -136,8 +136,8 @@ export async function getInvestmentOpportunities(): Promise<{ data: InvestmentOp
       currentPrice: data.price,
       dividendYield: data.dividendYield || 0,
       roi: data.changePercent,
-      trend30d: data.changePercent * 3 + (Math.random() * 2 - 1), 
-      trend90d: data.changePercent * 8 + (Math.random() * 4 - 2), 
+      trend30d: data.changePercent * 3,
+      trend90d: data.changePercent * 8,
       score: Math.round(score),
       recommendation,
     };

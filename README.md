@@ -1,20 +1,35 @@
-# Finance Dashboard
+# Finance Dashboard 💰
 
-Dashboard de gerenciamento financeiro pessoal com análise de investimentos B3, projeções e visualização de dados.
+Dashboard de gerenciamento financeiro pessoal com análise de investimentos, projeções e visualização de dados.
+
+![Version](https://img.shields.io/badge/version-1.0.0-green)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Stack](https://img.shields.io/badge/stack-React%20%2B%20Node.js%20%2B%20TypeScript-cyan)
 
 ## ✨ Funcionalidades
 
-- 📊 **Dashboard** - Visão geral de receitas, despesas e investimentos
+### Principal
+- 📊 **Dashboard** - Visão geral com patrimônio total, receitas, despesas, assinaturas e metas
 - 💰 **Lançamentos** - Registro de receitas e despesas categorizadas
-- 📈 **Carteira** - Gestão de investimentos com atualização de preços
-- 💡 **Oportunidades** - Ranking de melhores investimentos baseado em análise
-- 🔮 **Projeções** - Simulador de juros compostos com projeção de patrimônio
+- 📈 **Carteira** - Gestão de investimentos com atualização automática de preços
+- 🔮 **Projeções** - Simulador de juros compostos com gráficos
+
+### Configurações
+- 🎯 **Meta Mensal** - Defina sua meta de economia mensal
+- 📱 **Assinaturas** - Gerencie suas assinaturas recorrentes
+- 🎯 **Metas** - Acompanhe metas financeiras (viagem, emergência, etc.)
+- 👥 **Cadastros** - Gestão de usuários (admin)
+
+### Estilo
+- 🌙 **Modo Escuro/Claro** - Persiste automaticamente
+- ✨ **Animações** - Transições suaves
+- 🎨 **Design System** - Padrão visual consistente
 
 ## 🚀 Como executar
 
 ### Pré-requisitos
 - Node.js 18+
-- npm ou yarn
+- npm
 
 ### Instalação
 
@@ -24,13 +39,13 @@ npm install
 
 # Executar em modo desenvolvimento
 npm run dev
-
-# Build para produção
-npm run build
 ```
 
 ### Acessar
 Abra `http://localhost:5173` no navegador.
+
+### Login (desenvolvimento)
+- **Admin**: `nicolasreitz46@gmail.com` / sua senha
 
 ## 🏗️ Arquitetura
 
@@ -39,71 +54,40 @@ src/
 ├── components/       # Componentes React
 │   ├── Sidebar.tsx      # Navegação lateral
 │   ├── Dashboard.tsx    # Painel principal
-│   ├── DataInput.tsx    # Formulários de entrada
-│   ├── Investments.tsx  # Carteira de investimentos
-│   ├── Opportunities.tsx # Oportunidades B3
-│   └── Projections.tsx  # Simulador de projeções
-├── hooks/           # Hooks customizados
-│   ├── useLocalStorage.ts  # Persistência local
-│   └── useFinanceData.ts   # Gerenciamento de dados
-├── services/        # Integrações com APIs
-│   └── b3Api.ts     # Dados da B3 (mockado)
-├── utils/           # Utilitários
-│   └── projections.ts    # Cálculos financeiros
+│   ├── DataInput.tsx   # Lançamentos
+│   ├── Investments.tsx  # Carteira
+│   ├── Projections.tsx # Projeções
+│   ├── Settings.tsx    # Configurações
+│   └── Auth.tsx        # Login/Registro
+├── hooks/           # Hooks React
+│   ├── useFinanceData.ts    # Dados financeiros
+│   ├── useSubscriptions.ts # Assinaturas
+│   ├── useGoals.ts         # Metas
+│   └── useUserSettings.ts # Configurações usuário
+├── services/        # Integrações APIs
+│   └── b3Api.ts     # Dados mercado
 └── types/           # TypeScript types
 ```
 
-## 🔌 Integração B3
+## 🔌 Dados de Mercado
 
-Atualmente os dados são **mockados** para demonstração. Para integrar com uma API real:
+Os preços são atualizados automaticamente:
+- Servidor busca dados da Yahoo Finance às 18:05 (segunda a sexta)
+- Cache armazenado em `marketData.json`
+- Atualização manual via endpoint `/api/market-data/refresh`
 
-1. Obtenha uma API key de um serviço como:
-   - [Alpha Vantage](https://www.alphavantage.co/)
-   - [Yahoo Finance API](https://finance.yahoo.com/)
-   - [Brapi](https://brapi.dev/) (API gratuita para B3)
+## 🔐 Segurança
 
-2. Edite `src/services/b3Api.ts`:
-
-```typescript
-const API_KEY = 'sua_api_key';
-const BASE_URL = 'https://api.brapi.dev/v1';
-
-export async function getMarketData(ticker: string): Promise<MarketData> {
-  const response = await fetch(
-    `${BASE_URL}/quote/${ticker}?token=${API_KEY}`
-  );
-  const data = await response.json();
-
-  return {
-    ticker: data.results[0].symbol,
-    price: data.results[0].regularMarketPrice,
-    change: data.results[0].regularMarketChange,
-    changePercent: data.results[0].regularMarketChangePercent,
-    volume: data.results[0].regularMarketVolume,
-    dividendYield: data.results[0].dividendYield,
-  };
-}
-```
-
-3. Atualize também `updateInvestmentPrices` e `getInvestmentOpportunities`.
-
-## 🎨 Design System
-
-- **Cores**: Paleta minimalista com verde primário
-- **Tipografia**: Inter (sans-serif)
-- **Sombras**: Suaves e sutis
-- **Espaçamento**: Generoso whitespace
-- **Dark mode**: Suporte nativo
-
-## 📝 Roadmap
-
-- [ ] Integração real com API B3
-- [ ] Backend (Node.js/Firebase)
-- [ ] Autenticação de usuários
-- [ ] Exportação CSV completa
-- [ ] Notificações de oportunidades
-- [ ] App mobile (React Native)
+- Rate limiting (prevenção brute-force)
+- Helmet com CSP
+- Sanitização de inputs
+- Senhas hashing com bcrypt
+- Token em environment variable
 
 ## 📄 Licença
 
-MIT - Livre para uso pessoal e comercial.
+MIT License - Livre para uso pessoal e comercial.
+
+---
+
+**Desenvolvido com** ❤️ por Nicolas Reitz

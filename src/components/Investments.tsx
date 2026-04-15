@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Plus, Trash2, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, Wallet, X, RefreshCw } from 'lucide-react';
 import type { Investment, InvestmentType } from '../types';
 import { getMarketData, updateInvestmentPrices } from '../services/b3Api';
-import { formatCurrency, formatPercent } from '../utils/projections';
 
-interface InvestmentsProps {
+interface InvestmentsComponentProps {
   investments: Investment[];
   onAdd: (investment: Omit<Investment, 'id'>) => void;
   onRemove: (id: string) => void;
-  onUpdate: (id: string, updates: Partial<Investment>) => void;
+  onUpdate?: (id: string, updates: Partial<Investment>) => void;
+  darkMode?: boolean;
 }
 
 const investmentTypes: { value: InvestmentType; label: string }[] = [
@@ -19,11 +19,27 @@ const investmentTypes: { value: InvestmentType; label: string }[] = [
   { value: 'other', label: 'Outro' },
 ];
 
-export function Investments({ investments, onAdd, onRemove, onUpdate }: InvestmentsProps) {
+const formatMoney = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+const formatPercent = (value: number) => value.toFixed(2) + '%';
+
+interface InvestmentsComponentProps {
+  investments: Investment[];
+  onAdd: (investment: Omit<Investment, 'id'>) => void;
+  onRemove: (id: string) => void;
+  onUpdate?: (id: string, updates: Partial<Investment>) => void;
+  darkMode?: boolean;
+}
+
+export function Investments({ investments, onAdd, onRemove, onUpdate, darkMode = false }: InvestmentsComponentProps) {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Form state
+  const textColor = darkMode ? '#a1a1a1' : '#57534e';
+  const textPrimary = darkMode ? '#ffffff' : '#1c1917';
+  const bgColor = darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.7)';
+  const borderColor = darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const accent = darkMode ? '#c6f135' : '#65a30d';
+
   const [ticker, setTicker] = useState('');
   const [name, setName] = useState('');
   const [type, setType] = useState<InvestmentType>('stock');
@@ -40,7 +56,6 @@ export function Investments({ investments, onAdd, onRemove, onUpdate }: Investme
     setLoading(true);
 
     try {
-      // Tenta buscar preço atual da API
       const marketData = await getMarketData(ticker.toUpperCase());
       const currentPrice = marketData?.price || parseFloat(avgPrice);
 
@@ -55,7 +70,6 @@ export function Investments({ investments, onAdd, onRemove, onUpdate }: Investme
         dividendYield: marketData?.dividendYield,
       });
 
-      // Reset form
       setTicker('');
       setName('');
       setQuantity('');
@@ -68,141 +82,167 @@ export function Investments({ investments, onAdd, onRemove, onUpdate }: Investme
     }
   };
 
+  const cardStyle = { backgroundColor: bgColor, backdropFilter: 'blur(20px)', border: `1px solid ${borderColor}` };
+
   const handleRefresh = async () => {
+    if (investments.length === 0 || !onUpdate) return;
+    
     setLoading(true);
-    const tickers = investments.map(i => i.ticker);
-    const prices = await updateInvestmentPrices(tickers);
-
-    prices.forEach((price, ticker) => {
-      const investment = investments.find(i => i.ticker === ticker);
-      if (investment) {
-        onUpdate(investment.id, { currentPrice: price });
-      }
-    });
-
-    setLoading(false);
+    try {
+      const tickers = investments.map(i => i.ticker);
+      const prices = await updateInvestmentPrices(tickers);
+      
+      prices.forEach((price, ticker) => {
+        const inv = investments.find(i => i.ticker === ticker);
+        if (inv && price) {
+          onUpdate(inv.id, { currentPrice: price, lastUpdated: new Date().toISOString() });
+        }
+      });
+    } catch (error) {
+      console.error('Error refreshing prices:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Carteira</h2>
-          <p className="text-neutral-500 dark:text-neutral-400 mt-1">
-            Gerencie seus investimentos
-          </p>
+          <h2 className="text-2xl font-semibold" style={{ color: textPrimary }}>Carteira</h2>
+          <p className="text-sm mt-1" style={{ color: textColor }}>Gerencie seus investimentos</p>
         </div>
-
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="btn-secondary flex items-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar Preços
-        </button>
+        {investments.length > 0 && (
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl flex items-center gap-2 font-medium transition-all hover:scale-105"
+            style={{ 
+              backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+              color: textColor 
+            }}
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar Preços
+          </button>
+        )}
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card p-6">
-          <p className="text-sm text-neutral-500">Valor Total</p>
-          <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-            {formatCurrency(totalValue)}
+        <div className="p-5 rounded-2xl" style={cardStyle}>
+          <p className="text-sm" style={{ color: textColor }}>Valor Total</p>
+          <p className="text-2xl font-mono font-bold" style={{ color: textPrimary }}>
+            {formatMoney(totalValue)}
           </p>
         </div>
 
-        <div className="card p-6">
-          <p className="text-sm text-neutral-500">Custo Total</p>
-          <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-            {formatCurrency(totalCost)}
+        <div className="p-5 rounded-2xl" style={cardStyle}>
+          <p className="text-sm" style={{ color: textColor }}>Custo Total</p>
+          <p className="text-2xl font-mono font-bold" style={{ color: textPrimary }}>
+            {formatMoney(totalCost)}
           </p>
         </div>
 
-        <div className="card p-6">
-          <p className="text-sm text-neutral-500">Resultado</p>
+        <div className="p-5 rounded-2xl" style={cardStyle}>
+          <p className="text-sm" style={{ color: textColor }}>Resultado</p>
           <div className="flex items-center gap-2">
-            <p
-              className={`text-2xl font-bold ${
-                totalReturn >= 0 ? 'text-primary-600' : 'text-red-600'
-              }`}
-            >
-              {totalReturn >= 0 ? '+' : ''}
-              {formatCurrency(totalReturn)}
+            <p className="text-2xl font-mono font-bold" style={{ color: totalReturn >= 0 ? '#22c55e' : '#ef4444' }}>
+              {totalReturn >= 0 ? '+' : ''}{formatMoney(totalReturn)}
             </p>
-            <span
-              className={`text-sm font-medium ${
-                returnPercent >= 0 ? 'text-primary-600' : 'text-red-600'
-              }`}
-            >
+            <span className="text-sm font-medium" style={{ color: returnPercent >= 0 ? '#22c55e' : '#ef4444' }}>
               ({formatPercent(returnPercent)})
             </span>
           </div>
         </div>
       </div>
 
-      {/* Add Button */}
       {!showForm && (
         <button
           onClick={() => setShowForm(true)}
-          className="btn-primary flex items-center gap-2"
+          className="px-5 py-3 rounded-xl flex items-center gap-2 font-medium transition-all duration-300 hover:scale-105"
+          style={{ 
+            backgroundColor: accent, 
+            color: darkMode ? '#000' : '#fff',
+            boxShadow: `0 4px 15px ${accent}40`
+          }}
         >
           <Plus className="w-5 h-5" />
           Novo Investimento
         </button>
       )}
 
-      {/* Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form onSubmit={handleSubmit} className="rounded-2xl p-6 space-y-5" style={{ 
+          backgroundColor: darkMode ? 'rgba(255,255,255,0.08)' : '#fff',
+          border: `1px solid ${borderColor}`
+        }}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold" style={{ color: textPrimary }}>Novo Investimento</h3>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: textColor }}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Ticker
-              </label>
+              <label className="text-sm font-medium block mb-2" style={{ color: textColor }}>Ticker</label>
               <input
                 type="text"
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value.toUpperCase())}
                 placeholder="PETR4"
-                className="input"
+                className="w-full px-4 py-3 rounded-xl border text-base"
+                style={{
+                  backgroundColor: darkMode ? 'rgba(0,0,0,0.3)' : '#f5f5f4',
+                  borderColor: borderColor,
+                  color: textPrimary,
+                }}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Nome
-              </label>
+              <label className="text-sm font-medium block mb-2" style={{ color: textColor }}>Nome (opcional)</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Petrobras"
-                className="input"
+                className="w-full px-4 py-3 rounded-xl border text-base"
+                style={{
+                  backgroundColor: darkMode ? 'rgba(0,0,0,0.3)' : '#f5f5f4',
+                  borderColor: borderColor,
+                  color: textPrimary,
+                }}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Tipo
-              </label>
+              <label className="text-sm font-medium block mb-2" style={{ color: textColor }}>Tipo</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as InvestmentType)}
-                className="input"
+                className="w-full px-4 py-3 rounded-xl border text-base"
+                style={{
+                  backgroundColor: darkMode ? 'rgba(0,0,0,0.3)' : '#f5f5f4',
+                  borderColor: borderColor,
+                  color: textPrimary,
+                }}
                 required
               >
                 {investmentTypes.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                  <option key={t.value} value={t.value} style={{ color: textPrimary }}>{t.label}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Quantidade
-              </label>
+              <label className="text-sm font-medium block mb-2" style={{ color: textColor }}>Quantidade</label>
               <input
                 type="number"
                 value={quantity}
@@ -210,15 +250,18 @@ export function Investments({ investments, onAdd, onRemove, onUpdate }: Investme
                 placeholder="100"
                 step="1"
                 min="0"
-                className="input"
+                className="w-full px-4 py-3 rounded-xl border text-base"
+                style={{
+                  backgroundColor: darkMode ? 'rgba(0,0,0,0.3)' : '#f5f5f4',
+                  borderColor: borderColor,
+                  color: textPrimary,
+                }}
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                Preço Médio (R$)
-              </label>
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium block mb-2" style={{ color: textColor }}>Preço Médio (R$)</label>
               <input
                 type="number"
                 value={avgPrice}
@@ -226,20 +269,38 @@ export function Investments({ investments, onAdd, onRemove, onUpdate }: Investme
                 placeholder="35,00"
                 step="0.01"
                 min="0"
-                className="input"
+                className="w-full px-4 py-3 rounded-xl border text-base font-mono"
+                style={{
+                  backgroundColor: darkMode ? 'rgba(0,0,0,0.3)' : '#f5f5f4',
+                  borderColor: borderColor,
+                  color: textPrimary,
+                }}
                 required
               />
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button type="submit" className="btn-primary" disabled={loading}>
+          <div className="flex gap-4">
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="flex-1 py-3 rounded-xl font-medium transition-all duration-300"
+              style={{ 
+                backgroundColor: accent, 
+                color: darkMode ? '#000' : '#fff',
+                opacity: loading ? 0.7 : 1
+              }}
+            >
               {loading ? 'Salvando...' : 'Salvar'}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="btn-secondary"
+              className="px-6 py-3 rounded-xl font-medium transition-colors"
+              style={{ 
+                backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                color: textColor 
+              }}
             >
               Cancelar
             </button>
@@ -247,100 +308,82 @@ export function Investments({ investments, onAdd, onRemove, onUpdate }: Investme
         </form>
       )}
 
-      {/* Investments List */}
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-neutral-50 dark:bg-neutral-800">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  Ativo
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  Quantidade
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  Preço Médio
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  Preço Atual
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  Valor Total
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  Resultado
-                </th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-              {investments.length === 0 ? (
+      <div className="rounded-2xl overflow-hidden" style={cardStyle}>
+        {investments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Wallet className="w-14 h-14 mb-4 opacity-30" style={{ color: textColor }} />
+            <p className="font-medium" style={{ color: textColor }}>Nenhum investimento registrado</p>
+            <p className="text-sm mt-1 opacity-70" style={{ color: textColor }}>Clique em "Novo Investimento" para começar</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead style={{ backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)' }}>
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-neutral-500">
-                    Nenhum investimento registrado
-                  </td>
+                  <th className="px-5 py-4 text-left text-sm font-medium" style={{ color: textColor }}>Ativo</th>
+                  <th className="px-5 py-4 text-right text-sm font-medium" style={{ color: textColor }}>Qtd</th>
+                  <th className="px-5 py-4 text-right text-sm font-medium" style={{ color: textColor }}>Custo Médio</th>
+                  <th className="px-5 py-4 text-right text-sm font-medium" style={{ color: textColor }}>Preço Atual</th>
+                  <th className="px-5 py-4 text-right text-sm font-medium" style={{ color: textColor }}>Valor Total</th>
+                  <th className="px-5 py-4 text-right text-sm font-medium" style={{ color: textColor }}>Resultado</th>
+                  <th className="px-5 py-4 text-center text-sm font-medium" style={{ color: textColor }}></th>
                 </tr>
-              ) : (
-                investments.map((inv) => {
-                  const totalValue = inv.quantity * inv.currentPrice;
-                  const totalCost = inv.quantity * inv.avgPrice;
-                  const result = totalValue - totalCost;
-                  const resultPercent = (result / totalCost) * 100;
+              </thead>
+              <tbody className="divide-y" style={{ borderColor }}>
+                {investments.map((inv) => {
+                  const totalInvValue = inv.quantity * inv.currentPrice;
+                  const totalInvCost = inv.quantity * inv.avgPrice;
+                  const result = totalInvValue - totalInvCost;
+                  const resultPercent = totalInvCost > 0 ? (result / totalInvCost) * 100 : 0;
+                  const isPositive = result >= 0;
 
                   return (
-                    <tr key={inv.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/30">
-                      <td className="px-4 py-4">
+                    <tr key={inv.id} className="transition-colors hover:opacity-80">
+                      <td className="px-5 py-4">
                         <div>
-                          <p className="font-medium text-neutral-900 dark:text-white">{inv.ticker}</p>
-                          <p className="text-sm text-neutral-500">{inv.name}</p>
+                          <p className="font-bold" style={{ color: textPrimary }}>{inv.ticker}</p>
+                          <p className="text-sm" style={{ color: textColor }}>{inv.name}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-right text-neutral-900 dark:text-white">
+                      <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>
                         {inv.quantity}
                       </td>
-                      <td className="px-4 py-4 text-right text-neutral-900 dark:text-white">
-                        {formatCurrency(inv.avgPrice)}
+                      <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>
+                        {formatMoney(inv.avgPrice)}
                       </td>
-                      <td className="px-4 py-4 text-right text-neutral-900 dark:text-white">
-                        {formatCurrency(inv.currentPrice)}
+                      <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>
+                        {formatMoney(inv.currentPrice)}
                       </td>
-                      <td className="px-4 py-4 text-right text-neutral-900 dark:text-white">
-                        {formatCurrency(totalValue)}
+                      <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>
+                        {formatMoney(totalInvValue)}
                       </td>
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {result >= 0 ? (
-                            <TrendingUp className="w-4 h-4 text-primary-600" />
+                          {isPositive ? (
+                            <TrendingUp className="w-4 h-4" style={{ color: '#22c55e' }} />
                           ) : (
-                            <TrendingDown className="w-4 h-4 text-red-600" />
+                            <TrendingDown className="w-4 h-4" style={{ color: '#ef4444' }} />
                           )}
-                          <span
-                            className={
-                              result >= 0 ? 'text-primary-600' : 'text-red-600'
-                            }
-                          >
-                            {formatCurrency(result)} ({formatPercent(resultPercent)})
+                          <span className="font-mono" style={{ color: isPositive ? '#22c55e' : '#ef4444' }}>
+                            {isPositive ? '+' : ''}{formatMoney(result)} ({formatPercent(resultPercent)})
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-5 py-4 text-center">
                         <button
                           onClick={() => onRemove(inv.id)}
-                          className="p-2 text-neutral-400 hover:text-red-600 transition-colors"
+                          className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

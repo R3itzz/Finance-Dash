@@ -19,13 +19,47 @@ const PORT = process.env.PORT || 3001;
 const USERS_FILE = path.join(__dirname, 'users.json');
 const FINANCE_FILE = path.join(__dirname, 'financeData.json');
 
-app.use(helmet());
+// Security middleware - helmet with CSP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
-app.use(express.json({ limit: '10kb' }));
 
+// Limitar tamanho do corpo para prevenir attacks DoS
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// Função de sanitização simples para preveni XSS
+const sanitizeInput = (input) => {
+  if (typeof input === 'string') {
+    return input
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+  }
+  return input;
+};
+
+// Logging de segurança
+const securityLog = (message, details = {}) => {
+  console.log('[SECURITY]', new Date().toISOString(), message, JSON.stringify(details));
+};
+
+// Rate limiting para auth (prevenir brute-force)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -39,14 +73,39 @@ const apiLimiter = rateLimit({
 });
 
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  try {
+    const authHeader = req.headers['authorization'];
+    const providedToken = authHeader && authHeader.split(' ')[1];
+    const validToken = process.env.API_TOKEN;
 
-  if (!token || token !== process.env.API_TOKEN) {
-    console.warn(`[AUTH] Acesso negado. Token recebido: ${token ? 'Sim' : 'Não'}`);
-    return res.status(401).json({ error: 'Unauthorized' });
+    if (!providedToken || !validToken) {
+      securityLog('Missing token', { path: req.path, ip: req.ip });
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Timing-safe comparison
+    if (providedToken.length !== validToken.length) {
+      securityLog('Invalid token length', { path: req.path });
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    let match = true;
+    for (let i = 0; i < providedToken.length; i++) {
+      if (providedToken.charCodeAt(i) !== validToken.charCodeAt(i)) {
+        match = false;
+      }
+    }
+
+    if (!match) {
+      securityLog('Invalid token attempt', { path: req.path, ip: req.ip });
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('[AUTH] Token validation error:', error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
-  next();
 }
 
 async function readUsers() {
@@ -66,11 +125,23 @@ async function writeUsers(users) {
 }
 
 app.post('/api/login', authLimiter, async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
+  // Sanitizar inputs
+  const rawEmail = req.body.email;
+  const rawPassword = req.body.password;
+  
+  if (!rawEmail || !rawPassword) {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
+
+  // Validar formato de email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(rawEmail)) {
+    securityLog('Invalid email format attempt', { email: rawEmail });
+    return res.status(400).json({ error: 'Formato de email inválido.' });
+  }
+  
+  const email = sanitizeInput(rawEmail);
+  const password = rawPassword;
 
   const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
   const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
@@ -108,15 +179,28 @@ app.post('/api/login', authLimiter, async (req, res) => {
 });
 
 app.post('/api/register', authLimiter, async (req, res) => {
-  const { name, email, password } = req.body;
+  const rawName = req.body.name;
+  const rawEmail = req.body.email;
+  const rawPassword = req.body.password;
 
-  if (!name || !email || !password) {
+  if (!rawName || !rawEmail || !rawPassword) {
     return res.status(400).json({ error: 'Name, email, and password are required.' });
   }
 
-  if (password.length < 8) {
+  // Validar e sanitizar
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(rawEmail)) {
+    securityLog('Invalid email format in register', { email: rawEmail });
+    return res.status(400).json({ error: 'Formato de email inválido.' });
+  }
+
+  if (rawPassword.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   }
+
+  const name = sanitizeInput(rawName);
+  const email = sanitizeInput(rawEmail);
+  const password = rawPassword;
 
   try {
     const users = await readUsers();
@@ -246,6 +330,168 @@ app.post('/api/finance/:userId', authenticateToken, async (req, res) => {
   }
 });
 
+const SETTINGS_FILE = path.join(__dirname, 'userSettings.json');
+
+async function readSettings() {
+  try {
+    const data = await fs.readFile(SETTINGS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return {};
+    }
+    throw error;
+  }
+}
+
+async function writeSettings(data) {
+  await fs.writeFile(SETTINGS_FILE, JSON.stringify(data, null, 2));
+}
+
+app.get('/api/settings/:userId', authenticateToken, async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const allSettings = await readSettings();
+    const userSettings = allSettings[userId] || {
+      metaMensal: 0,
+      darkMode: false,
+      activeTab: 'assinaturas'
+    };
+    res.json({ success: true, settings: userSettings });
+  } catch (error) {
+    console.error('Error reading settings:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+app.post('/api/settings/:userId', authenticateToken, async (req, res) => {
+  const { userId } = req.params;
+  const settings = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  try {
+    const allSettings = await readSettings();
+    
+    allSettings[userId] = {
+      ...allSettings[userId],
+      ...settings,
+      updatedAt: new Date().toISOString()
+    };
+    
+    await writeSettings(allSettings);
+    res.json({ success: true, message: 'Settings saved successfully.' });
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+const SUBSCRIPTIONS_FILE = path.join(__dirname, 'subscriptions.json');
+
+async function readSubscriptions() {
+  try {
+    const data = await fs.readFile(SUBSCRIPTIONS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return {};
+    }
+    throw error;
+  }
+}
+
+async function writeSubscriptions(data) {
+  await fs.writeFile(SUBSCRIPTIONS_FILE, JSON.stringify(data, null, 2));
+}
+
+app.get('/api/subscriptions/:userId', authenticateToken, async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const allSubs = await readSubscriptions();
+    const userSubs = allSubs[userId] || [];
+    res.json({ success: true, subscriptions: userSubs });
+  } catch (error) {
+    console.error('Error reading subscriptions:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+app.post('/api/subscriptions/:userId', authenticateToken, async (req, res) => {
+  const { userId } = req.params;
+  const { subscriptions } = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  try {
+    const allSubs = await readSubscriptions();
+    
+    allSubs[userId] = subscriptions || [];
+    
+    await writeSubscriptions(allSubs);
+    res.json({ success: true, message: 'Subscriptions saved successfully.' });
+  } catch (error) {
+    console.error('Error saving subscriptions:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+const GOALS_FILE = path.join(__dirname, 'goals.json');
+
+async function readGoals() {
+  try {
+    const data = await fs.readFile(GOALS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return {};
+    }
+    throw error;
+  }
+}
+
+async function writeGoals(data) {
+  await fs.writeFile(GOALS_FILE, JSON.stringify(data, null, 2));
+}
+
+app.get('/api/goals/:userId', authenticateToken, async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const allGoals = await readGoals();
+    const userGoals = allGoals[userId] || [];
+    res.json({ success: true, goals: userGoals });
+  } catch (error) {
+    console.error('Error reading goals:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+app.post('/api/goals/:userId', authenticateToken, async (req, res) => {
+  const { userId } = req.params;
+  const { goals } = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  try {
+    const allGoals = await readGoals();
+    allGoals[userId] = goals || [];
+    await writeGoals(allGoals);
+    res.json({ success: true, message: 'Goals saved successfully.' });
+  } catch (error) {
+    console.error('Error saving goals:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY;
 const MARKET_DATA_FILE = path.join(__dirname, 'marketData.json');
 
@@ -293,36 +539,27 @@ async function writeMarketData(data) {
   await fs.writeFile(MARKET_DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-async function fetchAlphaVantageQuote(symbol) {
-  if (!ALPHA_VANTAGE_KEY) {
-    console.warn('[Alpha Vantage] API key not configured');
-    return null;
-  }
-  const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_VANTAGE_KEY}`;
+async function fetchYahooQuote(symbol) {
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`;
   const response = await fetch(url);
   const data = await response.json();
   
-  if (data['Global Quote'] && data['Global Quote']['05. price']) {
-    const q = data['Global Quote'];
+  if (data.quoteResponse && data.quoteResponse.result && data.quoteResponse.result[0]) {
+    const q = data.quoteResponse.result[0];
     return {
-      price: parseFloat(q['05. price']),
-      change: parseFloat(q['09. change']),
-      changePercent: parseFloat(q['10. change percent']?.replace('%', '') || '0'),
-      volume: parseInt(q['06. volume'] || '0', 10),
-      previousClose: parseFloat(q['08. previous close'] || '0'),
+      price: q.regularMarketPrice || 0,
+      change: q.regularMarketChange || 0,
+      changePercent: q.regularMarketChangePercent || 0,
+      volume: q.regularMarketVolume || 0,
+      previousClose: q.regularMarketPreviousClose || q.regularMarketPrice || 0,
     };
-  }
-  
-  if (data['Information'] || data['Note']) {
-    console.warn(`[Alpha Vantage] Rate limit:`, data['Information'] || data['Note']);
-    return null;
   }
   
   return null;
 }
 
 async function updateAllMarketData() {
-  console.log('[Alpha Vantage] Starting market data update...');
+  console.log('[Yahoo Finance] Starting market data update...');
   
   const results = [];
   let successCount = 0;
@@ -330,7 +567,7 @@ async function updateAllMarketData() {
   
   for (const entry of TRACKED_TICKERS) {
     try {
-      const quote = await fetchAlphaVantageQuote(entry.symbol);
+      const quote = await fetchYahooQuote(entry.symbol);
       
       if (quote) {
         results.push({
@@ -356,7 +593,7 @@ async function updateAllMarketData() {
       console.error(`  ✗ ${entry.ticker}: error - ${error.message}`);
     }
     
-    await sleep(1500);
+    await sleep(200);
   }
   
   const oldData = await readMarketData();
@@ -381,7 +618,7 @@ async function updateAllMarketData() {
   };
   
   await writeMarketData(marketData);
-  console.log(`[Alpha Vantage] Update complete! ${successCount} OK, ${failCount} failures.`);
+  console.log(`[Yahoo Finance] Update complete! ${successCount} OK, ${failCount} failures.`);
   
   return marketData;
 }
@@ -392,12 +629,12 @@ app.get('/api/market-data', apiLimiter, async (req, res) => {
     
     if (!data.lastUpdated || data.tickers.length === 0) {
       if (isUpdating && updatePromise) {
-        console.log('[Alpha Vantage] Update in progress, waiting...');
+        console.log('[Yahoo Finance] Update in progress, waiting...');
         const freshData = await updatePromise;
         return res.json({ success: true, data: freshData });
       }
       
-      console.log('[Alpha Vantage] Cache empty, starting first fetch...');
+      console.log('[Yahoo Finance] Cache empty, starting first fetch...');
       isUpdating = true;
       updatePromise = updateAllMarketData();
       
@@ -436,6 +673,6 @@ cron.schedule('5 18 * * 1-5', () => {
 
 app.listen(PORT, () => {
   console.log(`[Finance Dashboard] Server running on http://localhost:${PORT}`);
-  console.log(`[Alpha Vantage] Monitoring ${TRACKED_TICKERS.length} tickers`);
+  console.log(`[Yahoo Finance] Monitoring ${TRACKED_TICKERS.length} tickers`);
   console.log(`[CRON] Auto-update: Mon-Fri at 18:05 (Brasília Time)`);
 });
