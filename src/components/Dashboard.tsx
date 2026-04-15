@@ -111,7 +111,7 @@ export function Dashboard({ data, darkMode = false, metaMensal, subscriptions = 
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         <div className="glass-card lg:col-span-1" style={cardStyle}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-medium" style={{ color: textPrimary, fontFamily }}>Analítico</h3>
@@ -233,7 +233,7 @@ export function Dashboard({ data, darkMode = false, metaMensal, subscriptions = 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {(() => {
           const totalSubs = subscriptions.reduce((sum, s) => sum + s.amount, 0);
           const topSubs = subscriptions.slice(0, 2).map(s => s.name).join(' • ') || 'Nenhuma';
@@ -269,7 +269,7 @@ export function Dashboard({ data, darkMode = false, metaMensal, subscriptions = 
         })()}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
         <div className="glass-card cursor-pointer hover:border-accent/30 transition-colors" style={cardStyle} onClick={() => onNavigateToSetting?.('minhas_metas')}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font font-medium" style={{ color: textPrimary }}>Minhas Metas</h3>

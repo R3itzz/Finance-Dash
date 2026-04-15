@@ -1,4 +1,4 @@
-# Finance Dashboard 💰
+# Kash 💰
 
 Dashboard de gerenciamento financeiro pessoal com análise de investimentos, projeções e visualização de dados.
 

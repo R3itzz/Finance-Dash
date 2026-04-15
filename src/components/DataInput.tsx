@@ -159,7 +159,7 @@ export function DataInput({
             Nova {activeTab === 'income' ? 'Receita' : 'Despesa'}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div className="md:col-span-2">
                 <label className="block text-xs mb-1.5 font-medium" style={{ color: textSecondary }}>Descrição</label>
                 <input

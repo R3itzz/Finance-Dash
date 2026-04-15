@@ -128,22 +128,22 @@ export function Investments({ investments, onAdd, onRemove, onUpdate, darkMode =
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl" style={cardStyle}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        <div className="p-3 md:p-5 rounded-2xl" style={cardStyle}>
           <p className="text-sm" style={{ color: textColor }}>Valor Total</p>
-          <p className="text-2xl font-mono font-bold" style={{ color: textPrimary }}>
+          <p className="text-xl md:text-2xl font-mono font-bold" style={{ color: textPrimary }}>
             {formatMoney(totalValue)}
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl" style={cardStyle}>
+        <div className="p-3 md:p-5 rounded-2xl" style={cardStyle}>
           <p className="text-sm" style={{ color: textColor }}>Custo Total</p>
-          <p className="text-2xl font-mono font-bold" style={{ color: textPrimary }}>
+          <p className="text-xl md:text-2xl font-mono font-bold" style={{ color: textPrimary }}>
             {formatMoney(totalCost)}
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl" style={cardStyle}>
+        <div className="p-3 md:p-5 rounded-2xl" style={cardStyle}>
           <p className="text-sm" style={{ color: textColor }}>Resultado</p>
           <div className="flex items-center gap-2">
             <p className="text-2xl font-mono font-bold" style={{ color: totalReturn >= 0 ? '#22c55e' : '#ef4444' }}>
@@ -172,7 +172,7 @@ export function Investments({ investments, onAdd, onRemove, onUpdate, darkMode =
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="rounded-2xl p-6 space-y-5" style={{ 
+        <form onSubmit={handleSubmit} className="rounded-2xl p-4 md:p-6 space-y-5" style={{ 
           backgroundColor: darkMode ? 'rgba(255,255,255,0.08)' : '#fff',
           border: `1px solid ${borderColor}`
         }}>
@@ -308,7 +308,7 @@ export function Investments({ investments, onAdd, onRemove, onUpdate, darkMode =
         </form>
       )}
 
-      <div className="rounded-2xl overflow-hidden" style={cardStyle}>
+      <div className="rounded-2xl overflow-x-auto" style={cardStyle}>
         {investments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <Wallet className="w-14 h-14 mb-4 opacity-30" style={{ color: textColor }} />

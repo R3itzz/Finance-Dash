@@ -41,12 +41,11 @@ export function Sidebar({ user, currentView, onNavigate, isOpen, onToggle, darkM
   const textColor = darkMode ? '#a1a1a1' : '#57534e';
 
   return (
-    <aside 
-      className={`fixed left-0 top-0 h-full flex flex-col transition-all duration-700 ${
+<aside 
+      className={`fixed left-0 top-0 h-full flex flex-col transition-all duration-700 z-50 ${
         isOpen ? 'w-64' : 'w-20'
-      }`}
+      } ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:relative md:translate-x-0 ${isOpen ? 'md:w-64' : 'md:w-20'}`}
       style={{ 
-        zIndex: 50,
         backgroundColor: bgColor,
         borderRight: borderColor
       }}

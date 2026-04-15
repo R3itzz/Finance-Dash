@@ -49,7 +49,7 @@ export function Projections({ totalInvested, monthlyContribution, darkMode = fal
           Parâmetros da Simulação
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
           <div>
             <label className="text-sm font-medium block mb-2" style={{ color: textColor }}>Valor Inicial (R$)</label>
             <input
